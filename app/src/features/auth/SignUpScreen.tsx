@@ -7,18 +7,16 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Alert,
+  Platform,
 } from 'react-native';
+import axios, { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-// Define stack routes
-type RootStackParamList = {
-  Login: undefined;
-  Signup: undefined;
-};
+import { RootStackParamList } from '../../App';
 
 // Type navigation prop
 type SignUpScreenNavigationProp = NativeStackNavigationProp<
@@ -34,10 +32,46 @@ const SignUpScreen = () => {
   const [repeatPassword, setRepeatPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [repeatPasswordVisible, setRepeatPasswordVisible] = useState(false);
+  const BASE_URL =
+    Platform.OS === 'android'
+      ? 'http://10.190.126.185:5001'
+      : 'http://localhost:5001';
 
-  const handleSignUp = () => {
-    // Add sign up logic here
-    console.log('Sign Up:', email, password, repeatPassword);
+  const handleSignUp = async () => {
+    if (!email || !password || !repeatPassword) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+
+    if (password !== repeatPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${BASE_URL}/api/auth/register`, {
+        email,
+        password,
+        confirmPassword: repeatPassword,
+      });
+
+      Alert.alert(
+        'Success',
+        response.data.message || 'Registration successful!',
+      );
+      navigation.navigate('VerifyOTP', { email });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError<{ message: string }>;
+        Alert.alert(
+          'Error',
+          axiosError.response?.data?.message || 'Something went wrong.',
+        );
+      } else {
+        Alert.alert('Error', 'An unexpected error occurred.');
+      }
+      console.error('Sign Up Error:', err);
+    }
   };
 
   return (
@@ -54,7 +88,7 @@ const SignUpScreen = () => {
           {/* Header */}
           <View style={styles.header}>
             <Image
-              source={require('../assets/Frame.png')}
+              source={require('../../assets/Frame.png')}
               style={styles.logo}
             />
             <TouchableOpacity>
@@ -67,7 +101,11 @@ const SignUpScreen = () => {
             <Text style={styles.title}>Sign up to find a job</Text>
             <View style={styles.loginRow}>
               <Text>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('FirstandLastName', { email })
+                }
+              >
                 <Text style={styles.loginLink}>Log in</Text>
               </TouchableOpacity>
             </View>
@@ -77,7 +115,7 @@ const SignUpScreen = () => {
           <View style={styles.googleLogin}>
             <TouchableOpacity style={styles.googleButton}>
               <Image
-                source={require('../assets/google-color.png')}
+                source={require('../../assets/google-color.png')}
                 style={styles.googleLogo}
               />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
@@ -284,11 +322,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-
   inputGroup: {
     marginBottom: 15,
   },
-
   inputLabel: {
     fontSize: 14,
     color: '#555',
@@ -300,7 +336,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
   },
-
   input: {
     height: 50,
     borderColor: '#ccc',
@@ -311,7 +346,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingRight: 45, // space for the eye icon
   },
-
   eyeIcon: {
     position: 'absolute',
     right: 10,
@@ -322,7 +356,6 @@ const styles = StyleSheet.create({
   termsContainer: {
     marginVertical: 10,
   },
-
   termsText: {
     fontSize: 15,
     color: '#555',
